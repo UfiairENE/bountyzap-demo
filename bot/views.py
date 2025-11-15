@@ -4,12 +4,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from .models import Bounty
 from .utils import create_hold_invoice, comment, get_bio, extract_lnurl, verify_lnurl, keysend
+from django.db import models 
+
 
 @csrf_exempt
 def github_webhook(request):
     # ---- signature verification ----
     signature = request.headers.get('X-Hub-Signature-256', '')
-    digest = hmac.new(settings.WEBHOOK_SECRET.encode(), request.body, hashlib.sha256).hexdigest()
+    digest = hmac.new(settings.GITHUB_WEBHOOK_SECRET.encode(), request.body, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(f"sha256={digest}", signature):
         return JsonResponse({"error": "invalid signature"}, status=401)
 

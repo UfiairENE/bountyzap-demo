@@ -5,4 +5,5 @@ from bot import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('webhook/', views.github_webhook, name='webhook'),
+    path('badge/', views.bounty_badge, name='badge'),  
 ]
