@@ -24,11 +24,28 @@ def _get_macaroon():
     with open(settings.LND_MACAROON, 'rb') as f:
         return f.read().hex()
 
-# Create gRPC channel and stubs
-_creds = _get_lnd_credentials()
-_channel = grpc.secure_channel(settings.LND_GRPC_HOST, _creds)
-_lightning_stub = LightningStub(_channel)
-_invoices_stub = invoices_pb2_grpc.InvoicesStub(_channel)
+# Create gRPC channel and stubs (lazy initialization)
+_channel = None
+_lightning_stub = None
+_invoices_stub = None
+
+def _get_channel():
+    """Lazy initialization of gRPC channel"""
+    global _channel, _lightning_stub, _invoices_stub
+    if _channel is None:
+        try:
+            _creds = _get_lnd_credentials()
+            _channel = grpc.secure_channel(settings.LND_GRPC_HOST, _creds)
+            _lightning_stub = LightningStub(_channel)
+            _invoices_stub = invoices_pb2_grpc.InvoicesStub(_channel)
+        except FileNotFoundError as e:
+            raise Exception(f"LND configuration file not found: {e}. Check LND_TLS_CERT and LND_MACAROON paths in your .env file.")
+        except Exception as e:
+            error_str = str(e)
+            if "Connection refused" in error_str or "UNAVAILABLE" in error_str:
+                raise Exception(f"LND is not running or not accessible at {settings.LND_GRPC_HOST}. Please start LND and ensure it's listening on the configured address.")
+            raise Exception(f"Failed to connect to LND: {e}. Check LND_GRPC_HOST, LND_TLS_CERT, and LND_MACAROON settings.")
+    return _channel, _lightning_stub, _invoices_stub
 
 # ---------- LIGHTNING FUNCTIONS ----------
 
@@ -37,6 +54,9 @@ def create_hold_invoice(sats: int, memo: str) -> dict:
     Create a hold invoice (HTLC) that holds funds until settled or cancelled.
     Returns preimage, payment_request, and payment_hash.
     """
+    # Lazy initialize channel
+    _, _, _invoices_stub = _get_channel()
+    
     # Generate random preimage and its hash
     preimage = os.urandom(32)
     payment_hash = hashlib.sha256(preimage).digest()
@@ -62,6 +82,7 @@ def create_hold_invoice(sats: int, memo: str) -> dict:
 
 def settle_hold_invoice(preimage_hex: str):
     """Settle (release) a hold invoice by revealing the preimage"""
+    _, _, _invoices_stub = _get_channel()
     preimage = bytes.fromhex(preimage_hex)
     request = SettleInvoiceMsg(preimage=preimage)
     metadata = [("macaroon", _get_macaroon())]
@@ -70,6 +91,7 @@ def settle_hold_invoice(preimage_hex: str):
 
 def cancel_hold_invoice(payment_hash_hex: str):
     """Cancel a hold invoice and return funds to payer"""
+    _, _, _invoices_stub = _get_channel()
     payment_hash = bytes.fromhex(payment_hash_hex)
     request = CancelInvoiceMsg(payment_hash=payment_hash)
     metadata = [("macaroon", _get_macaroon())]

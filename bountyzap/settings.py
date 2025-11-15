@@ -71,3 +71,32 @@ LND_GRPC_HOST = env('LND_GRPC_HOST')
 LND_MACAROON = env('LND_MACAROON')
 LND_TLS_CERT = env.path('LND_TLS_CERT')
 GITHUB_WEBHOOK_SECRET = env('GITHUB_WEBHOOK_SECRET', default='your-webhook-secret')
+
+# ---------- LOGGING ----------
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'bot': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
