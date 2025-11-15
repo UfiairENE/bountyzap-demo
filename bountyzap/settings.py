@@ -1,16 +1,19 @@
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 import os
 from pathlib import Path
 import environ
 
-env = environ.Env()
-environ.Env.read_env()          # reads .env
-
+# Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Initialize environ and read .env file
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))  
 
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env.bool('DEBUG', True)
 
-ALLOWED_HOSTS = ['*']           # tighten for prod
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -67,3 +70,4 @@ OWNER, REPO = GITHUB_REPO.split('/')
 LND_GRPC_HOST = env('LND_GRPC_HOST')
 LND_MACAROON = env('LND_MACAROON')
 LND_TLS_CERT = env.path('LND_TLS_CERT')
+GITHUB_WEBHOOK_SECRET = env('GITHUB_WEBHOOK_SECRET', default='your-webhook-secret')
